@@ -6,6 +6,7 @@ import json
 import logging
 import pathlib
 from contextlib import asynccontextmanager
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -24,7 +25,23 @@ log = logging.getLogger("optimizer")
 
 TEMPLATES = pathlib.Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES))
-scheduler = BackgroundScheduler(timezone=settings.timezone)
+
+
+def _resolve_timezone(name: str) -> ZoneInfo:
+    """Never let a bad TZ take the service down — degrade to UTC and say so."""
+    try:
+        return ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError):
+        log.error(
+            "Unknown timezone %r — falling back to UTC. Scheduled runs will use "
+            "UTC times. Check the TZ environment variable.",
+            name,
+        )
+        return ZoneInfo("UTC")
+
+
+SCHED_TZ = _resolve_timezone(settings.timezone)
+scheduler = BackgroundScheduler(timezone=SCHED_TZ)
 
 DEFAULT_LADDER = [
     {"days_out": 10, "discount": 15},
@@ -40,7 +57,12 @@ async def lifespan(_: FastAPI):
     init_db()
     scheduler.add_job(
         run_all,
-        CronTrigger(hour=settings.daily_hour, minute=settings.daily_minute),
+        # Pass the timezone explicitly: CronTrigger does not inherit the
+        # scheduler's, and would otherwise ask tzlocal, which reads the raw TZ
+        # env var and raises on anything it cannot parse.
+        CronTrigger(
+            hour=settings.daily_hour, minute=settings.daily_minute, timezone=SCHED_TZ
+        ),
         id="daily",
         replace_existing=True,
         misfire_grace_time=3600,
@@ -50,10 +72,14 @@ async def lifespan(_: FastAPI):
         "Daily run scheduled for %02d:%02d %s",
         settings.daily_hour,
         settings.daily_minute,
-        settings.timezone,
+        SCHED_TZ,
     )
     if settings.run_on_startup:
-        scheduler.add_job(run_all, "date", run_date=dt.datetime.now() + dt.timedelta(seconds=15))
+        scheduler.add_job(
+            run_all,
+            "date",
+            run_date=dt.datetime.now(SCHED_TZ) + dt.timedelta(seconds=15),
+        )
     yield
     scheduler.shutdown(wait=False)
 

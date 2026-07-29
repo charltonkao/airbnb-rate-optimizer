@@ -8,3 +8,6 @@ playwright==1.49.1
 pydantic==2.10.4
 python-dotenv==1.0.1
 httpx==0.28.1
+# Python's zoneinfo has no bundled database; the Playwright base image does not
+# ship system tzdata, so APScheduler cannot resolve names like America/Los_Angeles.
+tzdata==2024.2

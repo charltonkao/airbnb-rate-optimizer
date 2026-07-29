@@ -8,6 +8,12 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /srv
 
+# System tzdata so the TZ env var applies to logs and the C library too.
+# The Python tzdata package in requirements.txt covers zoneinfo separately.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tzdata \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
