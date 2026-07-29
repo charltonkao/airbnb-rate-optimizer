@@ -1,0 +1,53 @@
+# Portainer: Stacks -> Add stack -> Repository (point at your GitHub repo),
+# or paste this file into the Web editor. Set the variables below in
+# Portainer's "Environment variables" section rather than editing this file.
+
+services:
+  optimizer:
+    # Portainer's git-backed stacks build from source:
+    build: .
+    # If you would rather build the image yourself and just pull it, replace the
+    # two lines above with:  image: ghcr.io/<you>/airbnb-rate-optimizer:latest
+    container_name: airbnb-rate-optimizer
+    restart: unless-stopped
+
+    ports:
+      - "${HOST_PORT:-8080}:8080"
+
+    volumes:
+      # Change the host path to a real share, e.g. /volume1/docker/airbnb-optimizer
+      - ${DATA_PATH:-./data}:/data
+
+    environment:
+      TZ: ${TZ:-America/New_York}
+      DATABASE_URL: sqlite:////data/optimizer.db
+      BASE_URL: ${BASE_URL:-http://localhost:8080}
+
+      # When the daily job runs, in TZ above
+      DAILY_RUN_HOUR: ${DAILY_RUN_HOUR:-8}
+      DAILY_RUN_MINUTE: ${DAILY_RUN_MINUTE:-5}
+      RUN_ON_STARTUP: ${RUN_ON_STARTUP:-false}
+
+      # Scraping politeness. Raising SCRAPE_PAGES costs time and increases
+      # the chance Airbnb rate-limits you. Three pages is ~54 listings.
+      SCRAPE_PAGES: ${SCRAPE_PAGES:-3}
+      SCRAPE_DELAY_MS: ${SCRAPE_DELAY_MS:-2500}
+      SCRAPE_TIMEOUT_MS: ${SCRAPE_TIMEOUT_MS:-45000}
+
+      # Email
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-true}
+      EMAIL_TO: ${EMAIL_TO}
+      EMAIL_FROM: ${EMAIL_FROM}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      SMTP_SSL: ${SMTP_SSL:-false}
+
+    # Chromium is memory-hungry; give it room or scrapes will crash.
+    shm_size: "1gb"
+    deploy:
+      resources:
+        limits:
+          memory: 2g

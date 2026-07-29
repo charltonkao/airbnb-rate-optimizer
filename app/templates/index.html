@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block body %}
+
+{% if request.query_params.get("queued") %}
+<div class="banner">Run queued. Scraping takes 30–90 seconds; refresh shortly.</div>
+{% endif %}
+
+<div class="row" style="justify-content: space-between; align-items: center;">
+  <h2 style="margin:0">Availability windows</h2>
+  <form method="post" action="/run-all"><button class="ghost">Run all now</button></form>
+</div>
+
+{% if not windows %}
+<div class="card muted">No windows yet. Add one below to start tracking.</div>
+{% endif %}
+
+{% for w in windows %}
+{% set s = latest[w.id] %}
+<div class="card">
+  <div class="row" style="justify-content: space-between;">
+    <div>
+      <a href="/windows/{{ w.id }}" style="font-size:16px;font-weight:640;text-decoration:none">{{ w.name }}</a>
+      <div class="muted" style="font-size:13px">
+        {{ w.check_in }} → {{ w.check_out }} · {{ w.nights }} nights ·
+        max {{ w.max_bookings }} booking{{ "s" if w.max_bookings > 1 else "" }} ·
+        {{ w.days_out(today) }} days out
+      </div>
+    </div>
+    <div>
+      {% if not w.active %}<span class="pill err">paused</span>
+      {% elif s and s.action_needed %}<span class="pill warn">action</span>
+      {% elif s and s.ok %}<span class="pill ok">hold</span>
+      {% elif s %}<span class="pill err">error</span>
+      {% else %}<span class="pill">no data</span>{% endif %}
+    </div>
+  </div>
+
+  {% if s and s.ok %}
+  <div class="grid" style="margin-top:16px">
+    <div><label>Rank</label><div class="big">#{{ s.our_rank }}</div>
+      <div class="muted" style="font-size:12px">of {{ s.total_results }}</div></div>
+    <div><label>Your total</label><div class="big">${{ s.our_total | money }}</div>
+      <div class="muted" style="font-size:12px">{{ s.our_nights }} nights</div></div>
+    <div><label>Cheapest comp</label><div class="big">${{ s.cheapest_comp_total | money }}</div>
+      <div class="muted" style="font-size:12px">{{ s.cheapest_comp_name[:34] }}</div></div>
+    <div><label>Weekly discount</label>
+      <div class="big">{{ s.recommended_discount_pct | round | int }}%</div>
+      <div class="muted" style="font-size:12px">now {{ w.current_discount_pct | round | int }}%</div></div>
+  </div>
+  {% elif s %}
+  <div class="muted" style="margin-top:12px">{{ s.error }}</div>
+  {% endif %}
+</div>
+{% endfor %}
+
+<h2>Add a window</h2>
+<form method="post" action="/windows" class="card">
+  <div class="grid">
+    <div class="field"><label>Name</label>
+      <input name="name" required placeholder="August 2026"></div>
+    <div class="field"><label>Listing ID</label>
+      <input name="listing_id" required placeholder="3167866"></div>
+    <div class="field"><label>Title contains (fallback match)</label>
+      <input name="listing_title_match" placeholder="Green"></div>
+    <div class="field"><label>Check-in</label>
+      <input type="date" name="check_in" required></div>
+    <div class="field"><label>Check-out</label>
+      <input type="date" name="check_out" required></div>
+    <div class="field"><label>Max bookings</label>
+      <input type="number" name="max_bookings" value="1" min="1"></div>
+  </div>
+
+  <h3>Your live pricing</h3>
+  <div class="grid">
+    <div class="field"><label>Nightly price ($)</label>
+      <input type="number" step="1" name="nightly_price" required placeholder="475"></div>
+    <div class="field"><label>Current weekly discount (%)</label>
+      <input type="number" step="1" name="current_discount_pct" value="0"></div>
+    <div class="field"><label>Floor nightly ($)</label>
+      <input type="number" step="1" name="floor_nightly" value="250"></div>
+    <div class="field"><label>Max discount (%)</label>
+      <input type="number" step="1" name="max_discount_pct" value="60"></div>
+    <div class="field"><label>Undercut margin ($)</label>
+      <input type="number" step="1" name="undercut_margin" value="150"></div>
+    <div class="field"><label>Never raise price back</label>
+      <select name="ratchet_only"><option value="on">Yes</option><option value="">No</option></select></div>
+  </div>
+
+  <h3>Comparable set</h3>
+  <div class="grid">
+    <div class="field"><label>Market slug</label>
+      <input name="market_slug" value="Cambridge--MA"></div>
+    <div class="field"><label>Min bedrooms</label>
+      <input type="number" name="bedrooms" value="3"></div>
+    <div class="field"><label>Min baths</label>
+      <input type="number" step="0.5" name="min_baths" value="2"></div>
+    <div class="field"><label>Min reviews</label>
+      <input type="number" name="min_reviews" value="1"></div>
+    <div class="field"><label>Adults</label>
+      <input type="number" name="adults" value="4"></div>
+  </div>
+
+  <details>
+    <summary>Fallback time ladder</summary>
+    <p class="muted" style="font-size:13px">
+      Guarantees the discount still steps down as the window approaches, even when
+      competitors stay expensive. <code>days_out</code> is days until check-in.
+    </p>
+    <textarea name="ladder_json" rows="9">{{ default_ladder }}</textarea>
+  </details>
+
+  <div style="margin-top:16px"><button>Add window</button></div>
+</form>
+
+<p class="muted" style="font-size:13px">
+  Daily run at {{ "%02d"|format(settings.daily_hour) }}:{{ "%02d"|format(settings.daily_minute) }}
+  {{ settings.timezone }}. Email {{ "configured" if settings.email_ready() else "NOT configured" }}.
+</p>
+{% endblock %}

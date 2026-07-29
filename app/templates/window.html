@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}{{ w.name }}{% endblock %}
+{% block body %}
+
+{% if queued %}<div class="banner">Run queued. Refresh in 30–90 seconds.</div>{% endif %}
+
+<div class="row" style="justify-content: space-between; align-items:flex-start">
+  <div>
+    <h2 style="margin:0">{{ w.name }}</h2>
+    <div class="muted" style="font-size:13px">
+      {{ w.check_in }} → {{ w.check_out }} · {{ w.nights }} nights ·
+      {{ w.days_out(today) }} days out ·
+      listing <a href="https://www.airbnb.com/rooms/{{ w.listing_id }}" target="_blank">{{ w.listing_id }}</a>
+    </div>
+  </div>
+  <div class="row">
+    <form method="post" action="/windows/{{ w.id }}/run"><button>Run now</button></form>
+    <form method="post" action="/windows/{{ w.id }}/toggle">
+      <button class="ghost">{{ "Pause" if w.active else "Resume" }}</button></form>
+    <form method="post" action="/windows/{{ w.id }}/delete"
+          onsubmit="return confirm('Delete this window and its history?')">
+      <button class="danger">Delete</button></form>
+  </div>
+</div>
+
+{% if latest and latest.ok %}
+<div class="card" style="margin-top:18px">
+  <div class="grid">
+    <div><label>Rank</label><div class="big">#{{ latest.our_rank }}</div>
+      <div class="muted" style="font-size:12px">of {{ latest.total_results }} exact-date results</div></div>
+    <div><label>Your total</label><div class="big">${{ latest.our_total | money }}</div>
+      <div class="muted" style="font-size:12px">
+        ${{ (latest.our_total / latest.our_nights) | round | int }}/night all-in</div></div>
+    <div><label>Recommended discount</label>
+      <div class="big">{{ latest.recommended_discount_pct | round | int }}%</div>
+      <div class="muted" style="font-size:12px">currently {{ w.current_discount_pct | round | int }}%</div></div>
+    <div><label>Fees + tax wedge</label><div class="big">${{ latest.fees_estimate | money }}</div>
+      <div class="muted" style="font-size:12px">inferred from observed total</div></div>
+  </div>
+
+  <p style="margin:18px 0 0">{{ latest.recommendation_reason }}</p>
+
+  {% if w.max_bookings > 1 %}
+  <p class="muted" style="font-size:13px">
+    To allow up to {{ w.max_bookings }} bookings across {{ w.nights }} nights,
+    set your Airbnb minimum-nights to <strong>{{ w.recommended_min_nights }}</strong> or lower.
+  </p>
+  {% endif %}
+
+  {% if latest.action_needed %}
+  <div class="banner" style="margin-top:16px">
+    <strong>Action:</strong> change the weekly discount from
+    {{ w.current_discount_pct | round | int }}% to
+    {{ latest.recommended_discount_pct | round | int }}% at
+    <a href="{{ w.discount_settings_url }}" target="_blank">your Airbnb discount settings</a>.
+    Airbnb rejects a weekly discount higher than the monthly one, so raise monthly first if needed.
+  </div>
+  {% endif %}
+
+  <form method="post" action="/windows/{{ w.id }}/discount" class="row" style="margin-top:14px">
+    <div class="field" style="margin:0;max-width:220px">
+      <label>I applied this discount (%)</label>
+      <input type="number" step="0.5" name="current_discount_pct"
+             value="{{ latest.recommended_discount_pct }}">
+    </div>
+    <button class="ghost">Record</button>
+  </form>
+</div>
+
+<h3>Comparable listings</h3>
+<div class="card">
+  <table>
+    <tr><th>#</th><th>Listing</th><th class="num">Beds</th><th class="num">Baths</th>
+        <th class="num">Reviews</th><th class="num">Total</th><th class="num">Per night</th></tr>
+    <tr class="ours">
+      <td>{{ latest.our_rank }}</td><td>You — {{ w.name }}</td>
+      <td class="num">{{ w.bedrooms }}</td><td class="num">{{ w.min_baths }}</td><td class="num">—</td>
+      <td class="num">${{ latest.our_total | money }}</td>
+      <td class="num">${{ (latest.our_total / latest.our_nights) | round | int }}</td>
+    </tr>
+    {% for c in latest.comps %}
+    <tr>
+      <td>{{ c.position }}</td><td>{{ c.name }}</td>
+      <td class="num">{{ c.bedrooms }}</td><td class="num">{{ c.baths }}</td>
+      <td class="num">{{ c.reviews }}</td>
+      <td class="num">${{ c.total | money }}</td>
+      <td class="num">${{ c.per_night | round | int }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% elif latest %}
+<div class="card" style="margin-top:18px">
+  <span class="pill err">error</span>
+  <p>{{ latest.error }}</p>
+</div>
+{% else %}
+<div class="card muted" style="margin-top:18px">No runs yet. Hit “Run now”.</div>
+{% endif %}
+
+<h3>History</h3>
+<div class="card">
+  <table>
+    <tr><th>When</th><th class="num">Rank</th><th class="num">Your total</th>
+        <th class="num">Cheapest comp</th><th class="num">Rec. discount</th><th>Applied</th></tr>
+    {% for s in snaps %}
+    <tr>
+      <td>{{ s.taken_at.strftime("%b %d, %H:%M") }}</td>
+      <td class="num">{{ ("#" ~ s.our_rank) if s.ok else "—" }}</td>
+      <td class="num">{{ ("$" ~ (s.our_total | money)) if s.ok else "—" }}</td>
+      <td class="num">{{ ("$" ~ (s.cheapest_comp_total | money)) if s.cheapest_comp_total else "—" }}</td>
+      <td class="num">{{ (s.recommended_discount_pct | round | int ~ "%") if s.ok else "—" }}</td>
+      <td>{{ "yes" if s.applied else "" }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

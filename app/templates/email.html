@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;background:#fbfbfa">
+<div style="max-width:640px;margin:0 auto;padding:28px 24px;
+            font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+            color:#1a1a19;font-size:15px;line-height:1.55">
+
+  <p style="margin:0 0 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#6b6b68">
+    {{ generated }}
+  </p>
+  <h1 style="margin:0 0 6px;font-size:21px;letter-spacing:-.01em">{{ window.name }}</h1>
+  <p style="margin:0 0 22px;color:#6b6b68;font-size:14px">
+    {{ window.check_in }} → {{ window.check_out }} · {{ window.nights }} nights ·
+    <strong>{{ days_out }} days out</strong>
+  </p>
+
+  {% if snap.action_needed %}
+  <div style="background:#fdf3dc;border:1px solid #f0dcae;border-radius:8px;padding:14px 16px;margin-bottom:22px">
+    <strong>Change your weekly discount to {{ snap.recommended_discount_pct | round | int }}%</strong>
+    <span style="color:#6b6b68">(currently {{ window.current_discount_pct | round | int }}%)</span>
+    <div style="margin-top:8px;font-size:13px;color:#6b6b68">
+      Raise the monthly discount first if it is lower — Airbnb rejects a weekly
+      discount that exceeds the monthly one.
+    </div>
+    <div style="margin-top:12px">
+      <a href="{{ window.discount_settings_url }}"
+         style="background:#1a1a19;color:#fff;text-decoration:none;padding:9px 16px;
+                border-radius:7px;display:inline-block;font-weight:600;font-size:14px">
+        Open discount settings
+      </a>
+    </div>
+  </div>
+  {% else %}
+  <div style="background:#e6f2ea;border:1px solid #c5e0d0;border-radius:8px;padding:12px 16px;margin-bottom:22px">
+    <strong>Hold at {{ window.current_discount_pct | round | int }}%.</strong>
+    No change needed today.
+  </div>
+  {% endif %}
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px">
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid #e4e3e0">Search rank</td>
+      <td style="padding:10px 0;border-bottom:1px solid #e4e3e0;text-align:right;font-weight:600">
+        #{{ snap.our_rank }} of {{ snap.total_results }}</td>
+    </tr>
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid #e4e3e0">Your guest total</td>
+      <td style="padding:10px 0;border-bottom:1px solid #e4e3e0;text-align:right;font-weight:600">
+        ${{ "{:,.0f}".format(snap.our_total) }}</td>
+    </tr>
+    {% if snap.cheapest_comp_name %}
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid #e4e3e0">Cheapest comparable</td>
+      <td style="padding:10px 0;border-bottom:1px solid #e4e3e0;text-align:right;font-weight:600">
+        ${{ "{:,.0f}".format(snap.cheapest_comp_total) }}</td>
+    </tr>
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid #e4e3e0;color:#6b6b68;font-size:13px"
+          colspan="2">{{ snap.cheapest_comp_name }}</td>
+    </tr>
+    {% endif %}
+    <tr>
+      <td style="padding:10px 0">Projected total at {{ snap.recommended_discount_pct | round | int }}%</td>
+      <td style="padding:10px 0;text-align:right;font-weight:600">
+        ${{ "{:,.0f}".format(result.projected_total) }}</td>
+    </tr>
+  </table>
+
+  <p style="color:#6b6b68;font-size:14px;margin:0 0 24px">{{ snap.recommendation_reason }}</p>
+
+  {% if window.max_bookings > 1 %}
+  <p style="color:#6b6b68;font-size:13px;margin:0 0 24px">
+    Targeting up to {{ window.max_bookings }} bookings: set your Airbnb minimum-nights
+    to <strong>{{ window.recommended_min_nights }}</strong> or lower.
+  </p>
+  {% endif %}
+
+  {% if result.comps %}
+  <h2 style="font-size:15px;margin:0 0 10px">Comparable listings</h2>
+  <table width="100%" cellpadding="0" cellspacing="0" style="font-size:13px">
+    <tr style="color:#6b6b68;font-size:11px;text-transform:uppercase;letter-spacing:.04em">
+      <td style="padding:6px 0">Listing</td>
+      <td style="padding:6px 0;text-align:right">Total</td>
+      <td style="padding:6px 0;text-align:right">/night</td>
+    </tr>
+    {% for c in result.comps[:8] %}
+    <tr>
+      <td style="padding:7px 0;border-top:1px solid #e4e3e0">{{ c.name[:44] }}</td>
+      <td style="padding:7px 0;border-top:1px solid #e4e3e0;text-align:right">
+        ${{ "{:,.0f}".format(c.total) }}</td>
+      <td style="padding:7px 0;border-top:1px solid #e4e3e0;text-align:right">
+        ${{ "{:,.0f}".format(c.per_night) }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  <p style="margin:28px 0 0;font-size:13px;color:#6b6b68">
+    <a href="{{ base_url }}/windows/{{ window.id }}" style="color:#b8452f">Open the dashboard</a>
+    · Recommendations only. Nothing was changed on your listing.
+  </p>
+</div>
+</body>
+</html>
