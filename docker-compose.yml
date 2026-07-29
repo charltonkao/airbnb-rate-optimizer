@@ -46,8 +46,8 @@ services:
       SMTP_SSL: ${SMTP_SSL:-false}
 
     # Chromium is memory-hungry; give it room or scrapes will crash.
+    # NOTE: use mem_limit, not deploy.resources — the latter is Swarm-only and
+    # is ignored (or rejected) by standalone Docker, which is what Portainer
+    # on Synology runs.
     shm_size: "1gb"
-    deploy:
-      resources:
-        limits:
-          memory: 2g
+    mem_limit: 2g

@@ -1,4 +1,7 @@
+# Any env file with real secrets. .env.example is kept because it ends
+# in .example, not .env.
 .env
+*.env
 data/
 *.db
 *.sqlite3
