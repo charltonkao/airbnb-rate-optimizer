@@ -41,6 +41,11 @@ def _resolve_timezone(name: str) -> ZoneInfo:
 
 
 SCHED_TZ = _resolve_timezone(settings.timezone)
+
+# Localise log timestamps in Python rather than relying on system tzdata,
+# which is not installed in the base image (see the note in the Dockerfile).
+logging.Formatter.converter = lambda *_: dt.datetime.now(SCHED_TZ).timetuple()
+
 scheduler = BackgroundScheduler(timezone=SCHED_TZ)
 
 DEFAULT_LADDER = [

@@ -8,12 +8,11 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /srv
 
-# System tzdata so the TZ env var applies to logs and the C library too.
-# The Python tzdata package in requirements.txt covers zoneinfo separately.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends tzdata \
-    && rm -rf /var/lib/apt/lists/*
-
+# Deliberately no apt-get here. Installing system tzdata triggers an
+# interactive debconf prompt that hangs the build forever in any non-TTY
+# context (Portainer, CI). The tzdata package in requirements.txt gives
+# Python's zoneinfo everything it needs, and log timestamps are localised
+# in app/main.py instead.
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
